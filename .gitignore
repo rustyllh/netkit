@@ -1,0 +1,24 @@
+# 构建产物
+/bin/
+/dist/
+*.exe
+
+# 测试与性能分析产物
+/coverage.out
+/coverage.html
+*.test
+*.prof
+
+# 本地运行状态与敏感配置
+/.netkit/
+/netkit.yaml
+/.env
+
+# 本地规划文档
+/docs/DESIGN.md
+/docs/DEVELOPMENT.md
+
+# 编辑器和操作系统文件
+.DS_Store
+.idea/
+.vscode/
