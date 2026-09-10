@@ -83,10 +83,7 @@ func TestMihomoApply(t *testing.T) {
 	}}
 	failedHealth := func(context.Context, config.Config) Check { return failed("mihomo proxy health", "unreachable") }
 	application := NewWithHealth(cfg, runner, failedHealth)
-	if got := application.MihomoApply(context.Background(), false, false); got.OK {
-		t.Fatal("未确认 apply 应失败")
-	}
-	result := application.MihomoApply(context.Background(), false, true)
+	result := application.MihomoApply(context.Background(), false)
 	if result.OK {
 		t.Fatal("健康检查失败的 apply 应失败")
 	}
@@ -118,7 +115,7 @@ func TestMihomoRollbackReportsRestartFailureAfterRestore(t *testing.T) {
 		"systemctl daemon-reload":          {},
 		"systemctl restart mihomo.service": {ExitCode: 1, Stderr: "restart failed"},
 	}}, func(context.Context, config.Config) Check { return Check{OK: true} })
-	result := application.MihomoRollback(context.Background(), manifest.ID, false, true)
+	result := application.MihomoRollback(context.Background(), manifest.ID, false)
 	if result.OK {
 		t.Fatal("重启失败的 rollback 应失败")
 	}
@@ -142,10 +139,7 @@ func TestEasyTierValidationAndApply(t *testing.T) {
 		"/usr/local/bin/easytier-cli peer": {Stdout: "peer-1"}, "ip -o -4 addr show": {Stdout: "2: easytier inet 10.126.126.4/24"},
 	}}
 	application := New(cfg, runner)
-	if got := application.EasyTierApply(context.Background(), false, false); got.OK {
-		t.Fatal("未确认 EasyTier apply 应失败")
-	}
-	if got := application.EasyTierApply(context.Background(), false, true); !got.OK {
+	if got := application.EasyTierApply(context.Background(), false); !got.OK {
 		t.Fatalf("EasyTier apply 失败: %#v", got)
 	}
 	invalid := filepath.Join(root, "easytier", "config", "config.toml")
@@ -173,7 +167,7 @@ func TestEasyTierRollbackReportsRestartFailureAfterRestore(t *testing.T) {
 		t.Fatal(err)
 	}
 	application := New(cfg, fakeRunner{results: map[string]linux.Result{"systemctl daemon-reload": {}, "systemctl restart easytier.service": {ExitCode: 1, Stderr: "restart failed"}}})
-	result := application.EasyTierRollback(context.Background(), manifest.ID, false, true)
+	result := application.EasyTierRollback(context.Background(), manifest.ID, false)
 	if result.OK {
 		t.Fatal("重启失败的 EasyTier rollback 应失败")
 	}

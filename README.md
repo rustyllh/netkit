@@ -14,7 +14,7 @@ Netkit 是一个仅面向 Linux root 用户的网络基础服务运维 CLI。它
 | 备份 | 创建、列出、校验受限配置快照；不会包含业务数据或 provider 缓存 |
 | 审计 | 记录配置变更与校验事件，并脱敏 token、secret、API key |
 
-所有写操作都必须显式传入 `--confirm`；`--dry-run` 只展示计划，不修改服务或文件。
+`--dry-run` 只展示计划，不修改服务或文件；不带该参数时会直接执行对应操作。
 
 ## 安装
 
@@ -55,15 +55,15 @@ netkit links verify
 netkit mihomo validate
 netkit mihomo logs --since 1h
 netkit mihomo apply --dry-run
-netkit mihomo apply --confirm
-netkit mihomo rollback <SNAPSHOT_ID> --confirm
+netkit mihomo apply
+netkit mihomo rollback <SNAPSHOT_ID>
 
 # EasyTier
 netkit easytier status
 netkit easytier peers
 netkit easytier ping 10.126.126.3
 netkit easytier apply --dry-run
-netkit easytier apply --confirm
+netkit easytier apply
 
 # 配置快照
 netkit backup create

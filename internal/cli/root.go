@@ -176,22 +176,20 @@ func NewRootCommand() *cobra.Command {
 }
 
 func newEasyTierRestartCommand(newApp func() (app.Application, error), render func(*cobra.Command, app.Result) error, timeout *time.Duration) *cobra.Command {
-	var confirm bool
-	command := &cobra.Command{Use: "restart", Short: "Restart EasyTier after explicit confirmation", RunE: func(cmd *cobra.Command, _ []string) error {
+	command := &cobra.Command{Use: "restart", Short: "Restart EasyTier", RunE: func(cmd *cobra.Command, _ []string) error {
 		application, err := newApp()
 		if err != nil {
 			return err
 		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 		defer cancel()
-		return render(cmd, application.EasyTierRestart(ctx, confirm))
+		return render(cmd, application.EasyTierRestart(ctx))
 	}}
-	command.Flags().BoolVar(&confirm, "confirm", false, "确认重启 EasyTier")
 	return command
 }
 
 func newEasyTierApplyCommand(newApp func() (app.Application, error), render func(*cobra.Command, app.Result) error, timeout *time.Duration) *cobra.Command {
-	var confirm, dryRun bool
+	var dryRun bool
 	command := &cobra.Command{Use: "apply", Short: "Validate, snapshot, restart and verify EasyTier", RunE: func(cmd *cobra.Command, _ []string) error {
 		application, err := newApp()
 		if err != nil {
@@ -199,15 +197,14 @@ func newEasyTierApplyCommand(newApp func() (app.Application, error), render func
 		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 		defer cancel()
-		return render(cmd, application.EasyTierApply(ctx, dryRun, confirm))
+		return render(cmd, application.EasyTierApply(ctx, dryRun))
 	}}
-	command.Flags().BoolVar(&confirm, "confirm", false, "确认应用 EasyTier 变更")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "仅展示计划，不修改系统")
 	return command
 }
 
 func newEasyTierRollbackCommand(newApp func() (app.Application, error), render func(*cobra.Command, app.Result) error, timeout *time.Duration) *cobra.Command {
-	var confirm, dryRun bool
+	var dryRun bool
 	command := &cobra.Command{Use: "rollback SNAPSHOT_ID", Short: "Restore a verified EasyTier snapshot", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		application, err := newApp()
 		if err != nil {
@@ -215,30 +212,27 @@ func newEasyTierRollbackCommand(newApp func() (app.Application, error), render f
 		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 		defer cancel()
-		return render(cmd, application.EasyTierRollback(ctx, args[0], dryRun, confirm))
+		return render(cmd, application.EasyTierRollback(ctx, args[0], dryRun))
 	}}
-	command.Flags().BoolVar(&confirm, "confirm", false, "确认回滚 EasyTier 配置")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "仅展示计划，不修改系统")
 	return command
 }
 
 func newMihomoRestartCommand(newApp func() (app.Application, error), render func(*cobra.Command, app.Result) error, timeout *time.Duration) *cobra.Command {
-	var confirm bool
-	command := &cobra.Command{Use: "restart", Short: "Restart Mihomo after explicit confirmation", RunE: func(cmd *cobra.Command, _ []string) error {
+	command := &cobra.Command{Use: "restart", Short: "Restart Mihomo", RunE: func(cmd *cobra.Command, _ []string) error {
 		application, err := newApp()
 		if err != nil {
 			return err
 		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 		defer cancel()
-		return render(cmd, application.MihomoRestart(ctx, confirm))
+		return render(cmd, application.MihomoRestart(ctx))
 	}}
-	command.Flags().BoolVar(&confirm, "confirm", false, "确认重启 Mihomo")
 	return command
 }
 
 func newMihomoApplyCommand(newApp func() (app.Application, error), render func(*cobra.Command, app.Result) error, timeout *time.Duration) *cobra.Command {
-	var confirm, dryRun bool
+	var dryRun bool
 	command := &cobra.Command{Use: "apply", Short: "Validate, snapshot, restart and verify Mihomo", RunE: func(cmd *cobra.Command, _ []string) error {
 		application, err := newApp()
 		if err != nil {
@@ -246,15 +240,14 @@ func newMihomoApplyCommand(newApp func() (app.Application, error), render func(*
 		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 		defer cancel()
-		return render(cmd, application.MihomoApply(ctx, dryRun, confirm))
+		return render(cmd, application.MihomoApply(ctx, dryRun))
 	}}
-	command.Flags().BoolVar(&confirm, "confirm", false, "确认应用 Mihomo 变更")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "仅展示计划，不修改系统")
 	return command
 }
 
 func newMihomoRollbackCommand(newApp func() (app.Application, error), render func(*cobra.Command, app.Result) error, timeout *time.Duration) *cobra.Command {
-	var confirm, dryRun bool
+	var dryRun bool
 	command := &cobra.Command{Use: "rollback SNAPSHOT_ID", Short: "Restore a verified Mihomo snapshot", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 		application, err := newApp()
 		if err != nil {
@@ -262,9 +255,8 @@ func newMihomoRollbackCommand(newApp func() (app.Application, error), render fun
 		}
 		ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 		defer cancel()
-		return render(cmd, application.MihomoRollback(ctx, args[0], dryRun, confirm))
+		return render(cmd, application.MihomoRollback(ctx, args[0], dryRun))
 	}}
-	command.Flags().BoolVar(&confirm, "confirm", false, "确认回滚 Mihomo 配置")
 	command.Flags().BoolVar(&dryRun, "dry-run", false, "仅展示计划，不修改系统")
 	return command
 }

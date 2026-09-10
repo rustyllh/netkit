@@ -93,10 +93,7 @@ func NewWithHealth(cfg config.Config, runner linux.Runner, health func(context.C
 }
 
 // MihomoRestart 重载 unit 定义并重启 Mihomo。
-func (a Application) MihomoRestart(ctx context.Context, confirm bool) Result {
-	if !confirm {
-		return result("mihomo restart", []Check{failed("confirmation", "重启需要 --confirm")})
-	}
+func (a Application) MihomoRestart(ctx context.Context) Result {
 	if err := a.systemd.DaemonReload(ctx); err != nil {
 		return result("mihomo restart", []Check{failed("systemd reload", err.Error())})
 	}
@@ -107,16 +104,13 @@ func (a Application) MihomoRestart(ctx context.Context, confirm bool) Result {
 }
 
 // MihomoApply 校验、快照、重启并确认 Mihomo 健康状态。
-func (a Application) MihomoApply(ctx context.Context, dryRun, confirm bool) Result {
+func (a Application) MihomoApply(ctx context.Context, dryRun bool) Result {
 	validation := a.ValidateMihomo(ctx)
 	if !validation.OK {
 		return validation
 	}
 	if dryRun {
 		return result("mihomo apply", []Check{{Name: "plan", OK: true, Severity: "error", Detail: "将创建 mihomo 快照、重载 systemd 并重启服务"}})
-	}
-	if !confirm {
-		return result("mihomo apply", []Check{failed("confirmation", "应用变更需要 --confirm")})
 	}
 	manifest, err := snapshot.New(a.config.RootDir).Create(ctx, "mihomo")
 	if err != nil {
@@ -132,16 +126,13 @@ func (a Application) MihomoApply(ctx context.Context, dryRun, confirm bool) Resu
 }
 
 // MihomoRollback 创建当前保护快照后恢复指定的 Mihomo 快照。
-func (a Application) MihomoRollback(ctx context.Context, id string, dryRun, confirm bool) Result {
+func (a Application) MihomoRollback(ctx context.Context, id string, dryRun bool) Result {
 	store := snapshot.New(a.config.RootDir)
 	if _, err := store.Verify(ctx, id); err != nil {
 		return result("mihomo rollback", []Check{failed("snapshot", err.Error())})
 	}
 	if dryRun {
 		return result("mihomo rollback", []Check{{Name: "plan", OK: true, Severity: "error", Detail: "将保护当前配置并恢复快照 " + id}})
-	}
-	if !confirm {
-		return result("mihomo rollback", []Check{failed("confirmation", "回滚需要 --confirm")})
 	}
 	protection, err := store.Create(ctx, "mihomo")
 	if err != nil {
@@ -182,10 +173,7 @@ func (a Application) ValidateEasyTier(ctx context.Context) Result {
 }
 
 // EasyTierRestart 重载 unit 定义并重启 EasyTier。
-func (a Application) EasyTierRestart(ctx context.Context, confirm bool) Result {
-	if !confirm {
-		return result("easytier restart", []Check{failed("confirmation", "重启需要 --confirm")})
-	}
+func (a Application) EasyTierRestart(ctx context.Context) Result {
 	if err := a.systemd.DaemonReload(ctx); err != nil {
 		return result("easytier restart", []Check{failed("systemd reload", err.Error())})
 	}
@@ -196,15 +184,12 @@ func (a Application) EasyTierRestart(ctx context.Context, confirm bool) Result {
 }
 
 // EasyTierApply 校验、快照、重启并确认 EasyTier 健康状态。
-func (a Application) EasyTierApply(ctx context.Context, dryRun, confirm bool) Result {
+func (a Application) EasyTierApply(ctx context.Context, dryRun bool) Result {
 	if validation := a.ValidateEasyTier(ctx); !validation.OK {
 		return validation
 	}
 	if dryRun {
 		return result("easytier apply", []Check{{Name: "plan", OK: true, Severity: "error", Detail: "将创建 easytier 快照、重载 systemd 并重启服务"}})
-	}
-	if !confirm {
-		return result("easytier apply", []Check{failed("confirmation", "应用变更需要 --confirm")})
 	}
 	manifest, err := snapshot.New(a.config.RootDir).Create(ctx, "easytier")
 	if err != nil {
@@ -220,16 +205,13 @@ func (a Application) EasyTierApply(ctx context.Context, dryRun, confirm bool) Re
 }
 
 // EasyTierRollback 创建保护快照后恢复指定 EasyTier 快照。
-func (a Application) EasyTierRollback(ctx context.Context, id string, dryRun, confirm bool) Result {
+func (a Application) EasyTierRollback(ctx context.Context, id string, dryRun bool) Result {
 	store := snapshot.New(a.config.RootDir)
 	if _, err := store.Verify(ctx, id); err != nil {
 		return result("easytier rollback", []Check{failed("snapshot", err.Error())})
 	}
 	if dryRun {
 		return result("easytier rollback", []Check{{Name: "plan", OK: true, Severity: "error", Detail: "将保护当前配置并恢复快照 " + id}})
-	}
-	if !confirm {
-		return result("easytier rollback", []Check{failed("confirmation", "回滚需要 --confirm")})
 	}
 	protection, err := store.Create(ctx, "easytier")
 	if err != nil {
@@ -290,7 +272,7 @@ func (a Application) operationFailure(ctx context.Context, operation, target, sn
 		detail += "；审计记录失败: " + err.Error()
 	}
 	if snapshotID != "" {
-		detail += "；可使用 netkit " + target + " rollback " + snapshotID + " --confirm"
+		detail += "；可使用 netkit " + target + " rollback " + snapshotID
 	}
 	return result(operation, []Check{failed(operation, detail)})
 }

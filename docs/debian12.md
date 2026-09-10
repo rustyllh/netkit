@@ -53,7 +53,7 @@ netkit backup create
 netkit backup list
 ```
 
-若上述只读检查正常，再演练受控变更。先使用 `--dry-run`，确认计划无误后再使用 `--confirm`：
+若上述只读检查正常，再演练受控变更。先使用 `--dry-run` 确认计划：
 
 ```bash
 netkit mihomo apply --dry-run
