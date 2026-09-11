@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +12,39 @@ import (
 	"github.com/rustyllh/netkit/internal/linux"
 	"github.com/rustyllh/netkit/internal/snapshot"
 )
+
+func TestWaitForCheck(t *testing.T) {
+	t.Run("服务最终就绪", func(t *testing.T) {
+		attempts := 0
+		check := waitForCheck(context.Background(), time.Millisecond, func(context.Context) Check {
+			attempts++
+			if attempts < 3 {
+				return failed("health", "not ready")
+			}
+			return Check{Name: "health", OK: true}
+		})
+		if !check.OK {
+			t.Fatalf("健康检查 = %#v，期望成功", check)
+		}
+		if attempts != 3 {
+			t.Fatalf("检查次数 = %d，期望 3", attempts)
+		}
+	})
+
+	t.Run("等待超时保留失败详情", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
+		defer cancel()
+		check := waitForCheck(ctx, time.Millisecond, func(context.Context) Check {
+			return failed("health", "connection refused")
+		})
+		if check.OK {
+			t.Fatalf("健康检查 = %#v，期望失败", check)
+		}
+		if !strings.Contains(check.Detail, "connection refused") || !strings.Contains(check.Detail, "等待服务就绪超时") {
+			t.Fatalf("失败详情 = %q，未保留就绪等待信息", check.Detail)
+		}
+	})
+}
 
 type fakeRunner struct{ results map[string]linux.Result }
 
@@ -71,7 +105,7 @@ func TestPingEasyTierPeer(t *testing.T) {
 
 func TestMihomoApply(t *testing.T) {
 	root := testAppRoot(t)
-	cfg, err := config.Load(root, time.Second)
+	cfg, err := config.Load(root, 50*time.Millisecond)
 	if err != nil {
 		t.Fatal(err)
 	}

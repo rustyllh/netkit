@@ -29,6 +29,8 @@ type Check struct {
 	Detail   string `json:"detail"`
 }
 
+const healthCheckRetryInterval = 200 * time.Millisecond
+
 // CreateBackup 创建指定网络配置的可验证快照并写入审计事件。
 func (a Application) CreateBackup(ctx context.Context, target string) Result {
 	manifest, err := snapshot.New(a.config.RootDir).Create(ctx, target)
@@ -237,7 +239,7 @@ func (a Application) easyTierPostRestart(ctx context.Context, operation, snapsho
 		}
 		return a.operationFailure(ctx, operation, "easytier", snapshotID, action, fmt.Errorf("服务未处于 active 状态"))
 	}
-	peer := a.easyTierPeerHealthCheck(ctx)
+	peer := a.waitForCheck(ctx, a.easyTierPeerHealthCheck)
 	if !peer.OK {
 		return a.operationFailure(ctx, operation, "easytier", snapshotID, action, fmt.Errorf("健康检查失败: %s", peer.Detail))
 	}
@@ -256,7 +258,9 @@ func (a Application) mihomoPostRestart(ctx context.Context, operation, snapshotI
 		}
 		return a.operationFailure(ctx, operation, "mihomo", snapshotID, action, fmt.Errorf("%s", detail))
 	}
-	health := a.health(ctx, a.config)
+	health := a.waitForCheck(ctx, func(ctx context.Context) Check {
+		return a.health(ctx, a.config)
+	})
 	if !health.OK {
 		return a.operationFailure(ctx, operation, "mihomo", snapshotID, action, fmt.Errorf("健康检查失败: %s", health.Detail))
 	}
@@ -294,6 +298,35 @@ func mihomoHealthCheck(ctx context.Context, cfg config.Config) Check {
 	defer response.Body.Close()
 	ok := response.StatusCode >= http.StatusOK && response.StatusCode < http.StatusMultipleChoices
 	return Check{Name: "mihomo proxy health", OK: ok, Severity: "error", Detail: response.Status}
+}
+
+func (a Application) waitForCheck(ctx context.Context, check func(context.Context) Check) Check {
+	waitCtx, cancel := context.WithTimeout(ctx, a.config.Timeout)
+	defer cancel()
+	return waitForCheck(waitCtx, healthCheckRetryInterval, check)
+}
+
+// waitForCheck 在调用方的超时时间内等待服务通过健康检查。
+func waitForCheck(ctx context.Context, interval time.Duration, check func(context.Context) Check) Check {
+	last := check(ctx)
+	if last.OK {
+		return last
+	}
+
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			last.Detail += "；等待服务就绪超时: " + ctx.Err().Error()
+			return last
+		case <-ticker.C:
+			last = check(ctx)
+			if last.OK {
+				return last
+			}
+		}
+	}
 }
 
 // Status 并发检查受管服务的 systemd、端口和配置状态。
