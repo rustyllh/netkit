@@ -74,12 +74,12 @@ func (a Application) Doctor(ctx context.Context) Result {
 }
 
 // Logs 读取指定受管服务的 systemd 日志。
-func (a Application) Logs(ctx context.Context, target string, since time.Duration, follow bool) Result {
+func (a Application) Logs(ctx context.Context, target string, lines int, since time.Duration) Result {
 	unit, err := a.unitFor(target)
 	if err != nil {
 		return result(target+" logs", []Check{failed(target+" logs", err.Error())})
 	}
-	commandResult, err := a.systemd.Logs(ctx, unit, since, follow)
+	commandResult, err := a.systemd.Logs(ctx, unit, lines, since)
 	if err != nil {
 		return result(target+" logs", []Check{failed(target+" logs", err.Error())})
 	}
@@ -90,13 +90,13 @@ func (a Application) Logs(ctx context.Context, target string, since time.Duratio
 	return result(target+" logs", []Check{{Name: target + " logs", OK: commandResult.ExitCode == 0, Severity: "error", Detail: detail}})
 }
 
-// FollowLogs 将指定受管服务的新增日志实时转发到输出流。
-func (a Application) FollowLogs(ctx context.Context, target string, since time.Duration, stdout, stderr io.Writer) error {
+// FollowLogs 先输出最近日志，再将指定受管服务的新增日志实时转发到输出流。
+func (a Application) FollowLogs(ctx context.Context, target string, lines int, since time.Duration, stdout, stderr io.Writer) error {
 	unit, err := a.unitFor(target)
 	if err != nil {
 		return fmt.Errorf("持续读取 %s 日志: %w", target, err)
 	}
-	if err := a.systemd.FollowLogs(ctx, unit, since, stdout, stderr); err != nil {
+	if err := a.systemd.FollowLogs(ctx, unit, lines, since, stdout, stderr); err != nil {
 		return fmt.Errorf("持续读取 %s 日志: %w", target, err)
 	}
 	return nil

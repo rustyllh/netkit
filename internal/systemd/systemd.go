@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 	"time"
 
 	"github.com/rustyllh/netkit/internal/linux"
@@ -65,13 +66,10 @@ func (c Client) Restart(ctx context.Context, unit string) error {
 }
 
 // Logs 读取 unit 的 journald 日志。
-func (c Client) Logs(ctx context.Context, unit string, since time.Duration, follow bool) (linux.Result, error) {
-	if since <= 0 {
-		return linux.Result{}, fmt.Errorf("日志时间范围必须为正数")
-	}
-	args := []string{"--unit", unit, "--no-pager", "--output", "short-iso", "--since", since.String() + " ago"}
-	if follow {
-		args = append(args, "--follow")
+func (c Client) Logs(ctx context.Context, unit string, lines int, since time.Duration) (linux.Result, error) {
+	args, err := logArgs(unit, lines, since, false)
+	if err != nil {
+		return linux.Result{}, err
 	}
 	result, err := c.runner.Run(ctx, "journalctl", args...)
 	if err != nil {
@@ -80,27 +78,29 @@ func (c Client) Logs(ctx context.Context, unit string, since time.Duration, foll
 	return result, nil
 }
 
-// FollowLogs 实时转发 unit 的 journald 日志。
-func (c Client) FollowLogs(ctx context.Context, unit string, since time.Duration, stdout, stderr io.Writer) error {
-	if since <= 0 {
-		return fmt.Errorf("日志时间范围必须为正数")
+// FollowLogs 先输出最近日志，再实时转发 unit 的新增日志。
+func (c Client) FollowLogs(ctx context.Context, unit string, lines int, since time.Duration, stdout, stderr io.Writer) error {
+	args, err := logArgs(unit, lines, since, true)
+	if err != nil {
+		return err
 	}
 	streamer, ok := c.runner.(linux.Streamer)
 	if !ok {
 		return fmt.Errorf("进程执行器不支持流式日志")
 	}
-	return streamer.Stream(
-		ctx,
-		stdout,
-		stderr,
-		"journalctl",
-		"--unit",
-		unit,
-		"--no-pager",
-		"--output",
-		"short-iso",
-		"--since",
-		since.String()+" ago",
-		"--follow",
-	)
+	return streamer.Stream(ctx, stdout, stderr, "journalctl", args...)
+}
+
+func logArgs(unit string, lines int, since time.Duration, follow bool) ([]string, error) {
+	if lines <= 0 {
+		return nil, fmt.Errorf("日志行数必须为正数")
+	}
+	args := []string{"--unit", unit, "--no-pager", "--output", "short-iso", "--lines", strconv.Itoa(lines)}
+	if since > 0 {
+		args = append(args, "--since", since.String()+" ago")
+	}
+	if follow {
+		args = append(args, "--follow")
+	}
+	return args, nil
 }

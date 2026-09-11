@@ -243,9 +243,9 @@ func TestLogs(t *testing.T) {
 		t.Fatal(err)
 	}
 	application := New(cfg, fakeRunner{results: map[string]linux.Result{
-		"journalctl --unit mihomo.service --no-pager --output short-iso --since 1h0m0s ago": {Stdout: "service started"},
+		"journalctl --unit mihomo.service --no-pager --output short-iso --lines 100": {Stdout: "service started"},
 	}})
-	result := application.Logs(context.Background(), "mihomo", time.Hour, false)
+	result := application.Logs(context.Background(), "mihomo", 100, 0)
 	if !result.OK || result.Checks[0].Detail != "service started" {
 		t.Fatalf("unexpected result: %#v", result)
 	}

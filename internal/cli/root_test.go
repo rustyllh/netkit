@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"testing"
@@ -25,6 +26,26 @@ func TestRootCommandDoesNotExposeCompletion(t *testing.T) {
 	}
 	if strings.Contains(output.String(), "completion") {
 		t.Fatalf("帮助信息不应包含 completion：%s", output.String())
+	}
+}
+
+func TestCommandRuntimeRejectsNonRoot(t *testing.T) {
+	createdApplication := false
+	runtime := commandRuntime{
+		newApp: func() (app.Application, error) {
+			createdApplication = true
+			return app.Application{}, nil
+		},
+		euid: func() int { return 1000 },
+	}
+	err := runtime.run(&cobra.Command{}, func(context.Context, app.Application) app.Result {
+		return app.Result{}
+	})
+	if !errors.Is(err, errRootRequired) {
+		t.Fatalf("run() error = %v, 期望 root 权限错误", err)
+	}
+	if createdApplication {
+		t.Fatal("非 root 用户不应加载应用配置")
 	}
 }
 
@@ -57,6 +78,7 @@ func TestLogsCommandTimeout(t *testing.T) {
 		{
 			name:         "普通日志使用超时",
 			wantDeadline: true,
+			wantOutput:   "ok      mihomo logs              \n",
 		},
 		{
 			name:         "持续日志不使用超时",
@@ -73,12 +95,16 @@ func TestLogsCommandTimeout(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			newApp := func() (app.Application, error) {
-				return app.New(cfg, runner), nil
-			}
-			render := func(*cobra.Command, app.Result) error { return nil }
 			timeout := time.Nanosecond
-			command := newLogsCommand("mihomo", newApp, render, &timeout)
+			runtime := commandRuntime{
+				newApp: func() (app.Application, error) {
+					return app.New(cfg, runner), nil
+				},
+				timeout:    func() time.Duration { return timeout },
+				jsonOutput: func() bool { return false },
+				euid:       func() int { return 0 },
+			}
+			command := newLogsCommand("mihomo", runtime)
 			var output bytes.Buffer
 			command.SetOut(&output)
 			command.SetArgs(test.args)

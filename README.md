@@ -68,7 +68,10 @@ netkit links verify
 
 # Mihomo
 netkit mihomo validate
-netkit mihomo logs --since 1h
+netkit mihomo logs                # 默认显示最近 100 行
+netkit mihomo logs -f             # 显示最近 100 行后持续跟随
+netkit mihomo logs -n 300         # 指定显示行数
+netkit mihomo logs --since 1h     # 可选的时间范围过滤
 netkit mihomo apply --dry-run
 netkit mihomo apply
 netkit mihomo rollback <SNAPSHOT_ID>

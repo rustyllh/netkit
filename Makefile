@@ -1,4 +1,4 @@
-.PHONY: build test vet fmt-check release clean
+.PHONY: build test install-test vet fmt-check release clean
 
 VERSION ?= dev
 COMMIT ?= $(shell git rev-parse --short=12 HEAD 2>/dev/null || echo none)
@@ -11,6 +11,9 @@ build:
 
 test:
 	go test -race ./...
+
+install-test:
+	sh tests/install_test.sh
 
 vet:
 	go vet ./...
