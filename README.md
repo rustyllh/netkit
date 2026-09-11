@@ -18,9 +18,24 @@ Netkit 是一个仅面向 Linux root 用户的网络基础服务运维 CLI。它
 
 ## 安装
 
-要求：Linux、root 权限和 Go 1.26+。Mihomo 与 EasyTier 二进制需已按服务器约定安装。
+要求：Linux、root 权限。Mihomo 与 EasyTier 二进制需已按服务器约定安装。
 
-以 root 身份安装到 `/usr/local/bin`：
+推荐从 GitHub Release 安装。脚本会识别 amd64/arm64、校验 SHA256，并安装到 `/usr/local/bin/netkit`：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rustyllh/netkit/main/install.sh | sh
+netkit --version
+```
+
+安装指定版本：
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rustyllh/netkit/main/install.sh | NETKIT_VERSION=v0.1.3 sh
+```
+
+默认安装目录为 `/usr/local/bin`；可通过 `NETKIT_INSTALL_DIR` 覆盖。非 root 用户需要 `sudo`。
+
+也可使用 Go 从源码编译安装。此方式要求 Go 1.26+，且版本信息不一定包含 Git commit 与构建时间：
 
 ```bash
 GOBIN=/usr/local/bin go install github.com/rustyllh/netkit/cmd/netkit@latest
@@ -80,4 +95,4 @@ make test
 make build
 ```
 
-`make release` 只生成 Linux amd64/arm64 二进制及校验和，用于本地构建验证；当前不会上传 GitHub Release。
+`make release` 生成 Linux amd64/arm64 二进制及校验和。推送 `v*` tag 时，GitHub Actions 会将这些文件发布到 GitHub Release。

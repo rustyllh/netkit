@@ -12,7 +12,7 @@
 
 ```bash
 make release VERSION=v0.1.0
-scp dist/netkit_linux_amd64 root@HOST:/usr/local/bin/netkit
+scp dist/netkit_linux_amd64.tar.gz root@HOST:/tmp/
 ```
 
 相同源码、`VERSION`、`COMMIT` 和 `BUILD_TIME` 参数会得到相同发布包；正式发布应显式传入三者。
@@ -20,11 +20,12 @@ scp dist/netkit_linux_amd64 root@HOST:/usr/local/bin/netkit
 在目标机执行：
 
 ```bash
-chmod 0755 /usr/local/bin/netkit
+tar -xzf /tmp/netkit_linux_amd64.tar.gz -C /tmp
+install -m 0755 /tmp/netkit /usr/local/bin/netkit
 netkit --version
 ```
 
-若目标为 arm64，使用 `netkit_linux_arm64`。
+若目标为 arm64，使用 `netkit_linux_arm64.tar.gz`。
 
 ## 资产与标准入口
 
