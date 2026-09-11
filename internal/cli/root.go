@@ -273,9 +273,12 @@ func newLogsCommand(target string, newApp func() (app.Application, error), rende
 			if err != nil {
 				return err
 			}
+			if follow {
+				return render(cmd, application.Logs(cmd.Context(), target, since, true))
+			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 			defer cancel()
-			return render(cmd, application.Logs(ctx, target, since, follow))
+			return render(cmd, application.Logs(ctx, target, since, false))
 		},
 	}
 	command.Flags().DurationVar(&since, "since", time.Hour, "读取多久以前开始的日志")
