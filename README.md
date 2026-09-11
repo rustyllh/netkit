@@ -8,6 +8,7 @@ Netkit 是一个仅面向 Linux root 用户的网络基础服务运维 CLI。它
 
 | 范围 | 能力 |
 | --- | --- |
+| 组件安装 | 在线安装指定或最新官方 Release；或从明确指定的本地 Release 包安装 |
 | 全局诊断 | 服务状态、软链接验证、Mihomo 端口、EasyTier 网卡与 Docker 代理关联检查 |
 | Mihomo | 配置校验、journald 日志、健康检查、快照、受控 apply / rollback |
 | EasyTier | TOML 校验、peer 查询与 ping、journald 日志、快照、受控 apply / rollback |
@@ -82,6 +83,15 @@ netkit easytier peers
 netkit easytier ping 10.126.126.3
 netkit easytier apply --dry-run
 netkit easytier apply
+
+# 组件二进制：在线默认安装 latest，不会自动重启服务
+netkit components install
+netkit components install --mihomo-version vX.Y.Z --easytier-version vY.Z.A
+
+# 离线包必须明确指定；不联网，也不要求额外校验文件
+netkit components install \
+  --mihomo-package /mnt/releases/mihomo-linux-amd64-vX.Y.Z.gz \
+  --easytier-package /mnt/releases/easytier-linux-x86_64-vY.Z.A.zip
 
 # 配置快照
 netkit backup create

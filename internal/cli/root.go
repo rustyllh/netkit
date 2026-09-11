@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/rustyllh/netkit/internal/app"
+	"github.com/rustyllh/netkit/internal/components"
 	"github.com/spf13/cobra"
 )
 
@@ -35,9 +36,29 @@ func NewRootCommand() *cobra.Command {
 	command.AddCommand(newMihomoCommand(runtime))
 	command.AddCommand(newEasyTierCommand(runtime))
 	command.AddCommand(newBackupCommand(runtime))
+	command.AddCommand(newComponentsCommand(runtime))
 	command.AddCommand(newResultCommand(runtime, "doctor", "Run host and network diagnostics", nil, func(ctx context.Context, application app.Application) app.Result {
 		return application.Doctor(ctx)
 	}))
+	return command
+}
+
+func newComponentsCommand(runtime commandRuntime) *cobra.Command {
+	command := &cobra.Command{Use: "components", Short: "Install managed component binaries"}
+	command.AddCommand(newComponentsInstallCommand(runtime))
+	return command
+}
+
+func newComponentsInstallCommand(runtime commandRuntime) *cobra.Command {
+	request := components.Request{}
+	command := newResultCommand(runtime, "install", "Install Mihomo and EasyTier binaries", nil, func(ctx context.Context, application app.Application) app.Result {
+		return application.InstallComponents(ctx, request)
+	})
+	flags := command.Flags()
+	flags.StringVar(&request.MihomoVersion, "mihomo-version", "", "Mihomo Release version; defaults to latest")
+	flags.StringVar(&request.EasyTierVersion, "easytier-version", "", "EasyTier Release version; defaults to latest")
+	flags.StringVar(&request.MihomoPackage, "mihomo-package", "", "path to a local Mihomo Release archive")
+	flags.StringVar(&request.EasyTierPackage, "easytier-package", "", "path to a local EasyTier Release archive")
 	return command
 }
 
