@@ -3,10 +3,24 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/rustyllh/netkit/internal/app"
 )
+
+func TestRootCommandDoesNotExposeCompletion(t *testing.T) {
+	command := NewRootCommand()
+	var output bytes.Buffer
+	command.SetOut(&output)
+	command.SetArgs([]string{"--help"})
+	if err := command.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(output.String(), "completion") {
+		t.Fatalf("帮助信息不应包含 completion：%s", output.String())
+	}
+}
 
 func TestWriteResultJSONContract(t *testing.T) {
 	value := app.Result{

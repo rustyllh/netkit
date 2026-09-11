@@ -20,7 +20,7 @@ Netkit 是一个仅面向 Linux root 用户的网络基础服务运维 CLI。它
 
 要求：Linux、root 权限。Mihomo 与 EasyTier 二进制需已按服务器约定安装。
 
-推荐从 GitHub Release 安装。脚本会识别 amd64/arm64、校验 SHA256，并安装到 `/usr/local/bin/netkit`：
+推荐从 GitHub Release 安装。脚本会识别 amd64/arm64、校验 SHA256，将 `netkit` 安装到 `/usr/local/bin`，并在系统支持时安装 Bash、Zsh、Fish 补全：
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rustyllh/netkit/main/install.sh | sh

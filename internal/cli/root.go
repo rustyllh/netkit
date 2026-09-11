@@ -35,6 +35,7 @@ func NewRootCommand() *cobra.Command {
 			return nil
 		},
 	}
+	command.CompletionOptions.DisableDefaultCmd = true
 	command.PersistentFlags().StringVar(&rootDir, "root", "", "Netkit asset root (default /root/netkit)")
 	command.PersistentFlags().DurationVar(&timeout, "timeout", 30*time.Second, "external command timeout")
 	command.PersistentFlags().BoolVar(&jsonOutput, "json", false, "emit JSON results")
