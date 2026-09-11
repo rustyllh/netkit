@@ -2,6 +2,7 @@ package linux
 
 import (
 	"context"
+	"io"
 	"testing"
 	"time"
 )
@@ -41,5 +42,36 @@ func TestOSRunnerTimeout(t *testing.T) {
 	}
 	if result.ExitCode == 0 {
 		t.Fatal("超时命令的退出码为 0")
+	}
+}
+
+func TestOSRunnerStreamForwardsOutputBeforeExit(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	reader, writer := io.Pipe()
+	defer reader.Close()
+	done := make(chan error, 1)
+	go func() {
+		defer writer.Close()
+		done <- OSRunner{}.Stream(
+			ctx,
+			writer,
+			io.Discard,
+			"sh",
+			"-c",
+			"printf ready; sleep 10",
+		)
+	}()
+
+	data := make([]byte, len("ready"))
+	if _, err := io.ReadFull(reader, data); err != nil {
+		t.Fatalf("未在命令退出前收到输出: %v", err)
+	}
+	if string(data) != "ready" {
+		t.Fatalf("输出 = %q，期望 ready", data)
+	}
+	cancel()
+	if err := <-done; err == nil {
+		t.Fatal("取消流式命令后应返回错误")
 	}
 }

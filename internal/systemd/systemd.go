@@ -4,6 +4,7 @@ package systemd
 import (
 	"context"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/rustyllh/netkit/internal/linux"
@@ -77,4 +78,29 @@ func (c Client) Logs(ctx context.Context, unit string, since time.Duration, foll
 		return linux.Result{}, fmt.Errorf("读取 %s 日志: %w", unit, err)
 	}
 	return result, nil
+}
+
+// FollowLogs 实时转发 unit 的 journald 日志。
+func (c Client) FollowLogs(ctx context.Context, unit string, since time.Duration, stdout, stderr io.Writer) error {
+	if since <= 0 {
+		return fmt.Errorf("日志时间范围必须为正数")
+	}
+	streamer, ok := c.runner.(linux.Streamer)
+	if !ok {
+		return fmt.Errorf("进程执行器不支持流式日志")
+	}
+	return streamer.Stream(
+		ctx,
+		stdout,
+		stderr,
+		"journalctl",
+		"--unit",
+		unit,
+		"--no-pager",
+		"--output",
+		"short-iso",
+		"--since",
+		since.String()+" ago",
+		"--follow",
+	)
 }

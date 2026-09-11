@@ -274,7 +274,7 @@ func newLogsCommand(target string, newApp func() (app.Application, error), rende
 				return err
 			}
 			if follow {
-				return render(cmd, application.Logs(cmd.Context(), target, since, true))
+				return application.FollowLogs(cmd.Context(), target, since, cmd.OutOrStdout(), cmd.ErrOrStderr())
 			}
 			ctx, cancel := context.WithTimeout(cmd.Context(), *timeout)
 			defer cancel()

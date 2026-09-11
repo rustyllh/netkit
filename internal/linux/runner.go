@@ -4,6 +4,7 @@ package linux
 import (
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"strings"
 )
@@ -18,6 +19,17 @@ type Result struct {
 // Runner 在不经由 shell 的情况下执行进程。
 type Runner interface {
 	Run(context.Context, string, ...string) (Result, error)
+}
+
+// Streamer 将外部命令的标准输出和标准错误实时写入调用方提供的流。
+type Streamer interface {
+	Stream(
+		context.Context,
+		io.Writer,
+		io.Writer,
+		string,
+		...string,
+	) error
 }
 
 // OSRunner 执行主机上的二进制文件。
@@ -38,4 +50,21 @@ func (OSRunner) Run(ctx context.Context, program string, args ...string) (Result
 		return result, nil
 	}
 	return result, fmt.Errorf("run %s: %w", program, err)
+}
+
+// Stream 以 args 执行 program，并实时转发标准输出和标准错误。
+func (OSRunner) Stream(
+	ctx context.Context,
+	stdout io.Writer,
+	stderr io.Writer,
+	program string,
+	args ...string,
+) error {
+	command := exec.CommandContext(ctx, program, args...)
+	command.Stdout = stdout
+	command.Stderr = stderr
+	if err := command.Run(); err != nil {
+		return fmt.Errorf("run %s: %w", program, err)
+	}
+	return nil
 }

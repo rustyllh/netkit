@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -34,11 +35,24 @@ func (r *contextRecordingRunner) Run(ctx context.Context, _ string, _ ...string)
 	return linux.Result{}, nil
 }
 
+func (r *contextRecordingRunner) Stream(
+	ctx context.Context,
+	stdout io.Writer,
+	_ io.Writer,
+	_ string,
+	_ ...string,
+) error {
+	_, r.hasDeadline = ctx.Deadline()
+	_, err := io.WriteString(stdout, "streamed log\n")
+	return err
+}
+
 func TestLogsCommandTimeout(t *testing.T) {
 	tests := []struct {
 		name         string
 		args         []string
 		wantDeadline bool
+		wantOutput   string
 	}{
 		{
 			name:         "普通日志使用超时",
@@ -48,6 +62,7 @@ func TestLogsCommandTimeout(t *testing.T) {
 			name:         "持续日志不使用超时",
 			args:         []string{"-f"},
 			wantDeadline: false,
+			wantOutput:   "streamed log\n",
 		},
 	}
 
@@ -64,12 +79,17 @@ func TestLogsCommandTimeout(t *testing.T) {
 			render := func(*cobra.Command, app.Result) error { return nil }
 			timeout := time.Nanosecond
 			command := newLogsCommand("mihomo", newApp, render, &timeout)
+			var output bytes.Buffer
+			command.SetOut(&output)
 			command.SetArgs(test.args)
 			if err := command.ExecuteContext(context.Background()); err != nil {
 				t.Fatal(err)
 			}
 			if runner.hasDeadline != test.wantDeadline {
 				t.Fatalf("上下文 deadline = %v，期望 %v", runner.hasDeadline, test.wantDeadline)
+			}
+			if output.String() != test.wantOutput {
+				t.Fatalf("命令输出 = %q，期望 %q", output.String(), test.wantOutput)
 			}
 		})
 	}
