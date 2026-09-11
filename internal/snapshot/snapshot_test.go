@@ -5,11 +5,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
+
+	"github.com/rustyllh/netkit/internal/config"
 )
 
 func TestCreateAndVerify(t *testing.T) {
 	root := testRoot(t)
-	store := New(root)
+	store := newStore(t, root)
 	manifest, err := store.Create(context.Background(), "all")
 	if err != nil {
 		t.Fatal(err)
@@ -34,7 +37,7 @@ func TestCreateAndVerify(t *testing.T) {
 
 func TestVerifyRejectsTamperingAndTraversal(t *testing.T) {
 	root := testRoot(t)
-	store := New(root)
+	store := newStore(t, root)
 	manifest, err := store.Create(context.Background(), "mihomo")
 	if err != nil {
 		t.Fatal(err)
@@ -56,14 +59,14 @@ func TestCreateFailsWhenSnapshotLocationIsBlocked(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".netkit"), []byte("blocked"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := New(root).Create(context.Background(), "mihomo"); err == nil {
+	if _, err := newStore(t, root).Create(context.Background(), "mihomo"); err == nil {
 		t.Fatal("快照位置不可创建时 Create() 应失败")
 	}
 }
 
 func TestRestore(t *testing.T) {
 	root := testRoot(t)
-	store := New(root)
+	store := newStore(t, root)
 	manifest, err := store.Create(context.Background(), "mihomo")
 	if err != nil {
 		t.Fatal(err)
@@ -104,4 +107,13 @@ func testRoot(t *testing.T) string {
 		}
 	}
 	return root
+}
+
+func newStore(t *testing.T, root string) Store {
+	t.Helper()
+	cfg, err := config.Load(root, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return New(cfg)
 }

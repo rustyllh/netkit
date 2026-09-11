@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/rustyllh/netkit/internal/config"
 )
 
 // File 表示快照中一个文件的完整性元数据。
@@ -31,11 +33,11 @@ type Manifest struct {
 	Files     []File    `json:"files"`
 }
 
-// Store 管理指定 Netkit 根目录下的快照。
-type Store struct{ root string }
+// Store 管理指定 Netkit 配置下的快照。
+type Store struct{ config config.Config }
 
 // New 创建快照存储。
-func New(root string) Store { return Store{root: root} }
+func New(cfg config.Config) Store { return Store{config: cfg} }
 
 // Create 为 target 创建快照。target 可为 mihomo、easytier 或 all。
 func (s Store) Create(ctx context.Context, target string) (Manifest, error) {
@@ -46,7 +48,7 @@ func (s Store) Create(ctx context.Context, target string) (Manifest, error) {
 	if err := ctx.Err(); err != nil {
 		return Manifest{}, err
 	}
-	base := filepath.Join(s.root, ".netkit", "snapshots")
+	base := filepath.Join(s.config.RootDir, ".netkit", "snapshots")
 	if err := os.MkdirAll(base, 0o700); err != nil {
 		return Manifest{}, fmt.Errorf("创建快照目录: %w", err)
 	}
@@ -93,7 +95,7 @@ func (s Store) Create(ctx context.Context, target string) (Manifest, error) {
 
 // List 返回所有已提交快照，按创建时间从新到旧排列。
 func (s Store) List(ctx context.Context) ([]Manifest, error) {
-	entries, err := os.ReadDir(filepath.Join(s.root, ".netkit", "snapshots"))
+	entries, err := os.ReadDir(filepath.Join(s.config.RootDir, ".netkit", "snapshots"))
 	if os.IsNotExist(err) {
 		return []Manifest{}, nil
 	}
@@ -131,7 +133,7 @@ func (s Store) Verify(ctx context.Context, id string) (Manifest, error) {
 		if !validRelativePath(file.Path) {
 			return Manifest{}, fmt.Errorf("快照包含非法路径 %q", file.Path)
 		}
-		path := filepath.Join(s.root, ".netkit", "snapshots", id, "files", file.Path)
+		path := filepath.Join(s.config.RootDir, ".netkit", "snapshots", id, "files", file.Path)
 		digest, size, err := checksum(path)
 		if err != nil {
 			return Manifest{}, fmt.Errorf("校验 %s: %w", file.Path, err)
@@ -156,7 +158,7 @@ func (s Store) Restore(ctx context.Context, id, target string) (Manifest, error)
 		if err := ctx.Err(); err != nil {
 			return Manifest{}, err
 		}
-		source := filepath.Join(s.root, ".netkit", "snapshots", id, "files", file.Path)
+		source := filepath.Join(s.config.RootDir, ".netkit", "snapshots", id, "files", file.Path)
 		destination, err := s.safeSourceDestination(file.Path)
 		if err != nil {
 			return Manifest{}, err
@@ -169,16 +171,13 @@ func (s Store) Restore(ctx context.Context, id, target string) (Manifest, error)
 }
 
 func (s Store) sourceFiles(target string) ([]string, error) {
-	all := map[string][]string{
-		"mihomo":   {"mihomo/config/config.yaml", "services/mihomo.service"},
-		"easytier": {"easytier/config/config.toml", "services/easytier.service"},
+	services, err := s.config.ServicesForTarget(target)
+	if err != nil {
+		return nil, err
 	}
-	if target == "all" {
-		return append(all["mihomo"], all["easytier"]...), nil
-	}
-	files, ok := all[target]
-	if !ok {
-		return nil, fmt.Errorf("不支持的快照目标 %q", target)
+	files := []string{}
+	for _, service := range services {
+		files = append(files, service.SourceFiles...)
 	}
 	return files, nil
 }
@@ -187,7 +186,7 @@ func (s Store) safeSource(relative string) (string, error) {
 	if !validRelativePath(relative) {
 		return "", fmt.Errorf("非法源路径 %q", relative)
 	}
-	path := filepath.Join(s.root, relative)
+	path := filepath.Join(s.config.RootDir, relative)
 	info, err := os.Stat(path)
 	if err != nil {
 		return "", err
@@ -202,14 +201,14 @@ func (s Store) safeSourceDestination(relative string) (string, error) {
 	if !validRelativePath(relative) {
 		return "", fmt.Errorf("非法目标路径 %q", relative)
 	}
-	return filepath.Join(s.root, relative), nil
+	return filepath.Join(s.config.RootDir, relative), nil
 }
 
 func (s Store) readManifest(id string) (Manifest, error) {
 	if !validID(id) {
 		return Manifest{}, fmt.Errorf("非法快照 ID %q", id)
 	}
-	data, err := os.ReadFile(filepath.Join(s.root, ".netkit", "snapshots", id, "manifest.json"))
+	data, err := os.ReadFile(filepath.Join(s.config.RootDir, ".netkit", "snapshots", id, "manifest.json"))
 	if err != nil {
 		return Manifest{}, fmt.Errorf("读取快照清单: %w", err)
 	}

@@ -10,18 +10,29 @@ import (
 
 const defaultRoot = "/root/netkit"
 
+const (
+	ServiceMihomo   = "mihomo"
+	ServiceEasyTier = "easytier"
+)
+
+// ManagedService 描述一个由 Netkit 管理的网络服务及其权威资产。
+type ManagedService struct {
+	Name        string
+	Unit        string
+	ConfigPath  string
+	SourceFiles []string
+}
+
 // Config 表示已解析的运行时配置。
 type Config struct {
 	RootDir         string
 	MihomoBinary    string
-	MihomoUnit      string
-	MihomoConfig    string
 	EasyTierCLI     string
-	EasyTierUnit    string
-	EasyTierConfig  string
 	MihomoProxyURL  string
 	MihomoHealthURL string
 	Timeout         time.Duration
+	Mihomo          ManagedService
+	EasyTier        ManagedService
 }
 
 // Load 按 rootDir、NETKIT_ROOT、生产默认值的顺序加载配置。
@@ -42,14 +53,22 @@ func Load(rootDir string, timeout time.Duration) (Config, error) {
 	return Config{
 		RootDir:         filepath.Clean(rootDir),
 		MihomoBinary:    "/usr/local/bin/mihomo",
-		MihomoUnit:      "mihomo.service",
-		MihomoConfig:    "/etc/mihomo",
 		EasyTierCLI:     "/usr/local/bin/easytier-cli",
-		EasyTierUnit:    "easytier.service",
-		EasyTierConfig:  "/etc/easytier/config.toml",
 		MihomoProxyURL:  "http://127.0.0.1:7890",
 		MihomoHealthURL: "https://www.gstatic.com/generate_204",
 		Timeout:         timeout,
+		Mihomo: ManagedService{
+			Name:        ServiceMihomo,
+			Unit:        "mihomo.service",
+			ConfigPath:  "/etc/mihomo",
+			SourceFiles: []string{"mihomo/config/config.yaml", "services/mihomo.service"},
+		},
+		EasyTier: ManagedService{
+			Name:        ServiceEasyTier,
+			Unit:        "easytier.service",
+			ConfigPath:  "/etc/easytier/config.toml",
+			SourceFiles: []string{"easytier/config/config.toml", "services/easytier.service"},
+		},
 	}, nil
 }
 
@@ -60,21 +79,58 @@ func (c Config) SnapshotDir() string { return filepath.Join(c.RootDir, ".netkit"
 func (c Config) AuditLog() string { return filepath.Join(c.RootDir, ".netkit", "audit.jsonl") }
 
 // MihomoSourceDir 返回 Mihomo 配置的权威目录。
-func (c Config) MihomoSourceDir() string { return filepath.Join(c.RootDir, "mihomo", "config") }
+func (c Config) MihomoSourceDir() string {
+	return filepath.Dir(filepath.Join(c.RootDir, c.Mihomo.SourceFiles[0]))
+}
 
 // EasyTierSourceFile 返回 EasyTier 配置的权威文件。
 func (c Config) EasyTierSourceFile() string {
-	return filepath.Join(c.RootDir, "easytier", "config", "config.toml")
+	return filepath.Join(c.RootDir, c.EasyTier.SourceFiles[0])
+}
+
+// Service 返回指定受管服务的定义副本。
+func (c Config) Service(name string) (ManagedService, error) {
+	switch name {
+	case ServiceMihomo:
+		return cloneService(c.Mihomo), nil
+	case ServiceEasyTier:
+		return cloneService(c.EasyTier), nil
+	default:
+		return ManagedService{}, fmt.Errorf("unknown service %q", name)
+	}
+}
+
+// ServicesForTarget 返回快照目标包含的受管服务定义。
+func (c Config) ServicesForTarget(target string) ([]ManagedService, error) {
+	switch target {
+	case ServiceMihomo, ServiceEasyTier:
+		service, err := c.Service(target)
+		if err != nil {
+			return nil, err
+		}
+		return []ManagedService{service}, nil
+	case "all":
+		return []ManagedService{cloneService(c.Mihomo), cloneService(c.EasyTier)}, nil
+	default:
+		return nil, fmt.Errorf("不支持的快照目标 %q", target)
+	}
 }
 
 // ServiceFile 返回指定服务的权威 systemd unit 文件路径。
 func (c Config) ServiceFile(name string) (string, error) {
-	switch name {
-	case "mihomo":
-		return filepath.Join(c.RootDir, "services", "mihomo.service"), nil
-	case "easytier":
-		return filepath.Join(c.RootDir, "services", "easytier.service"), nil
-	default:
-		return "", fmt.Errorf("unknown service %q", name)
+	service, err := c.Service(name)
+	if err != nil {
+		return "", err
 	}
+	for _, sourceFile := range service.SourceFiles {
+		if filepath.Ext(sourceFile) == ".service" {
+			return filepath.Join(c.RootDir, sourceFile), nil
+		}
+	}
+	return "", fmt.Errorf("服务 %q 未定义 unit 文件", name)
+}
+
+func cloneService(service ManagedService) ManagedService {
+	service.SourceFiles = append([]string{}, service.SourceFiles...)
+	return service
 }

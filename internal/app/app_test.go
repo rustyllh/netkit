@@ -121,7 +121,7 @@ func TestMihomoApply(t *testing.T) {
 	if result.OK {
 		t.Fatal("健康检查失败的 apply 应失败")
 	}
-	entries, err := snapshot.New(root).List(context.Background())
+	entries, err := snapshot.New(cfg).List(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,11 @@ func TestMihomoApply(t *testing.T) {
 
 func TestMihomoRollbackReportsRestartFailureAfterRestore(t *testing.T) {
 	root := testAppRoot(t)
-	store := snapshot.New(root)
+	cfg, err := config.Load(root, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := snapshot.New(cfg)
 	manifest, err := store.Create(context.Background(), "mihomo")
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +145,7 @@ func TestMihomoRollbackReportsRestartFailureAfterRestore(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte("changed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := config.Load(root, time.Second)
+	cfg, err = config.Load(root, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +191,11 @@ func TestEasyTierValidationAndApply(t *testing.T) {
 
 func TestEasyTierRollbackReportsRestartFailureAfterRestore(t *testing.T) {
 	root := testAppRoot(t)
-	store := snapshot.New(root)
+	cfg, err := config.Load(root, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	store := snapshot.New(cfg)
 	manifest, err := store.Create(context.Background(), "easytier")
 	if err != nil {
 		t.Fatal(err)
@@ -196,7 +204,7 @@ func TestEasyTierRollbackReportsRestartFailureAfterRestore(t *testing.T) {
 	if err := os.WriteFile(configPath, []byte("instance_name = 'changed'\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	cfg, err := config.Load(root, time.Second)
+	cfg, err = config.Load(root, time.Second)
 	if err != nil {
 		t.Fatal(err)
 	}
