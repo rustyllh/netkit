@@ -33,7 +33,7 @@ netkit --version
 curl -fsSL https://raw.githubusercontent.com/rustyllh/netkit/main/install.sh | NETKIT_VERSION=v0.1.3 sh
 ```
 
-默认安装目录为 `/usr/local/bin`；可通过 `NETKIT_INSTALL_DIR` 覆盖。非 root 用户需要 `sudo`。
+默认安装目录为 `/usr/local/bin`；可通过 `NETKIT_INSTALL_DIR` 覆盖。非 root 用户需要 `sudo`。若已安装 `bash-completion`，脚本会配置 `/root/.bashrc`；重新登录或执行 `source /root/.bashrc` 后生效。
 
 也可使用 Go 从源码编译安装。此方式要求 Go 1.26+，且版本信息不一定包含 Git commit 与构建时间：
 

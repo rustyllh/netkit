@@ -87,11 +87,47 @@ install_completion() {
 	fi
 }
 
+configure_bash_completion() {
+	loader="/usr/share/bash-completion/bash_completion"
+	bashrc="/root/.bashrc"
+	if [ ! -f "$loader" ]; then
+		printf '%s\n' "netkit install: 未检测到 bash-completion，跳过 Bash 自动加载配置" >&2
+		return
+	fi
+	if [ "$(id -u)" -eq 0 ]; then
+		if grep -Fq "# >>> netkit bash completion >>>" "$bashrc" 2>/dev/null; then
+			return
+		fi
+		cat >> "$bashrc" <<'EOF'
+
+# >>> netkit bash completion >>>
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+  . /usr/share/bash-completion/bash_completion
+fi
+# <<< netkit bash completion <<<
+EOF
+		return
+	fi
+	if sudo grep -Fq "# >>> netkit bash completion >>>" "$bashrc" 2>/dev/null; then
+		return
+	fi
+	sudo tee -a "$bashrc" >/dev/null <<'EOF'
+
+# >>> netkit bash completion >>>
+if [ -f /usr/share/bash-completion/bash_completion ]; then
+  . /usr/share/bash-completion/bash_completion
+fi
+# <<< netkit bash completion <<<
+EOF
+}
+
 install_directory "$install_dir"
 install_file 0755 "${temporary_dir}/netkit" "${install_dir}/netkit"
 install_completion "${temporary_dir}/completions/netkit.bash" "/usr/share/bash-completion/completions" "netkit"
 install_completion "${temporary_dir}/completions/_netkit" "/usr/share/zsh/vendor-completions" "_netkit"
 install_completion "${temporary_dir}/completions/_netkit" "/usr/local/share/zsh/site-functions" "_netkit"
 install_completion "${temporary_dir}/completions/netkit.fish" "/usr/share/fish/vendor_completions.d" "netkit.fish"
+configure_bash_completion
 
 "${install_dir}/netkit" --version
+printf '%s\n' "重新登录，或执行: source /root/.bashrc，以启用 Bash 补全"
