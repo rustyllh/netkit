@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/rustyllh/netkit/internal/app"
@@ -95,6 +96,13 @@ func writeResult(writer io.Writer, result app.Result, jsonOutput bool) error {
 		state := "ok"
 		if !check.OK {
 			state = check.Severity
+		}
+		if strings.Contains(check.Detail, "\n") {
+			detail := strings.TrimRight(check.Detail, "\n")
+			if _, err := fmt.Fprintf(writer, "%-7s %-24s\n%s\n", state, check.Name, detail); err != nil {
+				return err
+			}
+			continue
 		}
 		if _, err := fmt.Fprintf(writer, "%-7s %-24s %s\n", state, check.Name, check.Detail); err != nil {
 			return err

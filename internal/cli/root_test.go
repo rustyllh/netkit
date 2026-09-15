@@ -142,3 +142,25 @@ func TestWriteResultJSONContract(t *testing.T) {
 		}
 	}
 }
+
+func TestWriteResultMultilineDetail(t *testing.T) {
+	value := app.Result{
+		OK:        true,
+		Operation: "easytier status",
+		Checks: []app.Check{{
+			Name:     "easytier peers",
+			OK:       true,
+			Severity: "error",
+			Detail:   "| ipv4 | hostname |\n| --- | --- |\n| 10.0.0.1 | node |",
+		}},
+		Warnings: []string{},
+	}
+	var output bytes.Buffer
+	if err := writeResult(&output, value, false); err != nil {
+		t.Fatal(err)
+	}
+	want := "ok      easytier peers          \n| ipv4 | hostname |\n| --- | --- |\n| 10.0.0.1 | node |\n"
+	if output.String() != want {
+		t.Fatalf("多行详情输出 = %q，期望 %q", output.String(), want)
+	}
+}
